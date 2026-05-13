@@ -790,21 +790,292 @@
           role: 'external',
           path: '/ed-fi/students',
           description: 'Ed-Fi core entity: an individual for whom instruction, services, and/or care are provided.',
-          identityKey: 'studentUniqueId'
+          identity: ['studentUniqueId'],
+          required: ['birthDate', 'firstName', 'lastSurname', 'studentUniqueId'],
+          references: [],
+          properties: {
+            studentUniqueId: { type: 'string', maxLength: 32, identity: true, required: true, description: 'A unique alphanumeric code assigned to a student.' },
+            firstName: { type: 'string', maxLength: 75, required: true, description: 'A name given to an individual at birth, baptism, or during another naming ceremony, or through legal change.' },
+            lastSurname: { type: 'string', maxLength: 75, required: true, description: 'The name borne in common by members of a family.' },
+            birthDate: { type: 'string', format: 'date', required: true, description: 'The month, day, and year on which an individual was born.' },
+            middleName: { type: 'string', maxLength: 75, nullable: true, description: 'A secondary name given to an individual at birth, baptism, or during another naming ceremony.' },
+            generationCodeSuffix: { type: 'string', maxLength: 10, nullable: true, description: 'An appendage, if any, used to denote an individual’s generation in his family (e.g., Jr., Sr., III).' },
+            personalTitlePrefix: { type: 'string', maxLength: 30, nullable: true, description: 'A prefix used to denote the title, degree, position, or seniority of the individual.' },
+            preferredFirstName: { type: 'string', maxLength: 75, nullable: true, description: 'The first name the individual prefers, if different from their legal first name.' },
+            preferredLastSurname: { type: 'string', maxLength: 75, nullable: true, description: 'The last name the individual prefers, if different from their legal last name.' },
+            maidenName: { type: 'string', maxLength: 75, nullable: true, description: 'The individual’s maiden name.' },
+            birthSexDescriptor: { type: 'string', maxLength: 306, nullable: true, description: 'A person’s sex at birth.' },
+            birthCity: { type: 'string', maxLength: 30, nullable: true, description: 'The city the student was born in.' },
+            birthStateAbbreviationDescriptor: { type: 'string', maxLength: 306, nullable: true, description: 'The abbreviation for the state (within the U.S.) or extra-state jurisdiction in which an individual was born.' },
+            birthCountryDescriptor: { type: 'string', maxLength: 306, nullable: true, description: 'The country in which an individual is born. ISO 3166 2-letter country codes recommended.' },
+            birthInternationalProvince: { type: 'string', maxLength: 150, nullable: true, description: 'For students born outside of the U.S., the Province or jurisdiction in which an individual is born.' },
+            citizenshipStatusDescriptor: { type: 'string', maxLength: 306, nullable: true, description: 'An indicator of whether or not the person is a U.S. citizen.' },
+            dateEnteredUS: { type: 'string', format: 'date', nullable: true, description: 'For students born outside of the U.S., the date the student entered the U.S.' },
+            multipleBirthStatus: { type: 'boolean', nullable: true, description: 'Indicator of whether the student was born with other siblings (i.e., twins, triplets, etc.).' }
+          },
+          children: [
+            { name: 'identificationDocuments[]', kind: 'inner-collection',
+              description: 'Documents used to establish identity (e.g., birth certificate, passport).',
+              fields: [
+                { name: 'identificationDocumentUseDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The primary function of the document used for establishing identity.' },
+                { name: 'personalInformationVerificationDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The category of the document relative to its purpose.' },
+                { name: 'documentTitle', type: 'string', maxLength: 60, nullable: true, description: 'The title of the document given by the issuer.' },
+                { name: 'documentExpirationDate', type: 'string', format: 'date', nullable: true, description: 'The day when the document expires; null if it never expires.' },
+                { name: 'issuerName', type: 'string', maxLength: 150, nullable: true, description: 'Name of the entity or institution that issued the document.' },
+                { name: 'issuerCountryDescriptor', type: 'string', maxLength: 306, nullable: true, description: 'Country of origin of the document.' },
+                { name: 'issuerDocumentIdentificationCode', type: 'string', maxLength: 60, nullable: true, description: 'The unique identifier on the issuer’s identification system.' }
+              ] },
+            { name: 'otherNames[]', kind: 'inner-collection',
+              description: 'Other names (alias, nickname, previous legal name) associated with the student.',
+              fields: [
+                { name: 'otherNameTypeDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The types of alternate names for an individual.' },
+                { name: 'firstName', type: 'string', maxLength: 75, required: true, description: 'A name given at birth, baptism, or another naming ceremony, or through legal change.' },
+                { name: 'lastSurname', type: 'string', maxLength: 75, required: true, description: 'The name borne in common by members of a family.' },
+                { name: 'middleName', type: 'string', maxLength: 75, nullable: true, description: 'A secondary name.' },
+                { name: 'generationCodeSuffix', type: 'string', maxLength: 10, nullable: true, description: 'Generation suffix (e.g., Jr., Sr., III).' },
+                { name: 'personalTitlePrefix', type: 'string', maxLength: 30, nullable: true, description: 'A prefix denoting title, degree, position, or seniority.' }
+              ] },
+            { name: 'personalIdentificationDocuments[]', kind: 'inner-collection',
+              description: 'Documents presented to verify personal identity (e.g., driver’s license, passport, birth certificate).',
+              fields: [
+                { name: 'identificationDocumentUseDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The primary function of the document used for establishing identity.' },
+                { name: 'personalInformationVerificationDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The category of the document relative to its purpose.' },
+                { name: 'documentTitle', type: 'string', maxLength: 60, nullable: true, description: 'The title of the document given by the issuer.' },
+                { name: 'documentExpirationDate', type: 'string', format: 'date', nullable: true, description: 'The day when the document expires; null if it never expires.' },
+                { name: 'issuerName', type: 'string', maxLength: 150, nullable: true, description: 'Name of the entity or institution that issued the document.' },
+                { name: 'issuerCountryDescriptor', type: 'string', maxLength: 306, nullable: true, description: 'Country of origin of the document.' },
+                { name: 'issuerDocumentIdentificationCode', type: 'string', maxLength: 60, nullable: true, description: 'The unique identifier on the issuer’s identification system.' }
+              ] },
+            { name: 'visas[]', kind: 'inner-collection',
+              description: 'Indicator of a non-US citizen’s Visa type.',
+              fields: [
+                { name: 'visaDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'An indicator of a non-US citizen’s Visa type.' }
+              ] }
+          ]
         },
         'edFi.educationOrganization': {
           displayName: 'edFi.educationOrganization',
           role: 'external',
           path: '/ed-fi/educationOrganizations',
-          description: 'Ed-Fi core entity: any agency, school, or institution responsible for or providing education-related services.',
-          identityKey: 'educationOrganizationId'
+          description: 'Ed-Fi core entity: any agency, school, or institution responsible for or providing education-related services. Abstract base shared by school, localEducationAgency, stateEducationAgency, educationServiceCenter, organizationDepartment, communityOrganization, and postSecondaryInstitution.',
+          identity: ['educationOrganizationId'],
+          required: ['educationOrganizationId', 'nameOfInstitution', 'educationOrganizationCategories'],
+          references: [],
+          properties: {
+            educationOrganizationId: { type: 'integer', format: 'int64', identity: true, required: true, description: 'The identifier assigned to an education organization. Concrete subtypes substitute schoolId / localEducationAgencyId / stateEducationAgencyId / etc.' },
+            nameOfInstitution: { type: 'string', maxLength: 75, required: true, description: 'The full, legally accepted name of the institution.' },
+            shortNameOfInstitution: { type: 'string', maxLength: 75, nullable: true, description: 'A short name for the institution.' },
+            webSite: { type: 'string', maxLength: 255, nullable: true, description: 'The public web site address (URL) for the education organization.' },
+            operationalStatusDescriptor: { type: 'string', maxLength: 306, nullable: true, description: 'The current operational status of the education organization (e.g., active, inactive).' }
+          },
+          children: [
+            { name: 'educationOrganizationCategories[]', kind: 'inner-collection',
+              description: 'The classification of the education agency according to its level of administrative and operational control.',
+              fields: [
+                { name: 'educationOrganizationCategoryDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The classification of the education agency.' }
+              ] },
+            { name: 'addresses[]', kind: 'inner-collection',
+              description: 'The address(es) of the education entity.',
+              fields: [
+                { name: 'addressTypeDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The type of address (Physical, Mailing, etc.).' },
+                { name: 'stateAbbreviationDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'State or outlying area abbreviation.' },
+                { name: 'city', type: 'string', maxLength: 30, identity: true, required: true, description: 'City name.' },
+                { name: 'postalCode', type: 'string', maxLength: 17, identity: true, required: true, description: 'Five- or nine-digit zip code or overseas postal code.' },
+                { name: 'streetNumberName', type: 'string', maxLength: 150, identity: true, required: true, description: 'Street number and street name (or PO box).' },
+                { name: 'apartmentRoomSuiteNumber', type: 'string', maxLength: 50, nullable: true, description: 'Apartment, room, or suite number.' },
+                { name: 'buildingSiteNumber', type: 'string', maxLength: 20, nullable: true, description: 'Building number if multiple share the same address.' },
+                { name: 'nameOfCounty', type: 'string', maxLength: 30, nullable: true, description: 'County, parish, or borough name.' },
+                { name: 'countyFIPSCode', type: 'string', maxLength: 5, nullable: true, description: 'FIPS numeric code for the county.' },
+                { name: 'congressionalDistrict', type: 'string', maxLength: 30, nullable: true, description: 'Congressional district.' },
+                { name: 'localeDescriptor', type: 'string', maxLength: 306, nullable: true, description: 'Geographic category (e.g., City, Suburban).' },
+                { name: 'latitude', type: 'string', maxLength: 20, nullable: true, description: 'Geographic latitude.' },
+                { name: 'longitude', type: 'string', maxLength: 20, nullable: true, description: 'Geographic longitude.' },
+                { name: 'doNotPublishIndicator', type: 'boolean', nullable: true, description: 'Indicates the address should not be published.' }
+              ] },
+            { name: 'identificationCodes[]', kind: 'inner-collection',
+              description: 'A unique number or alphanumeric code assigned to an education organization by a school, state, or other agency.',
+              fields: [
+                { name: 'educationOrganizationIdentificationSystemDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The school system, state, or agency assigning the identification code.' },
+                { name: 'identificationCode', type: 'string', maxLength: 60, required: true, description: 'The unique number or alphanumeric code assigned.' }
+              ] },
+            { name: 'indicators[]', kind: 'inner-collection',
+              description: 'An indicator or metric of an education organization.',
+              fields: [
+                { name: 'indicatorDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The name or code for the indicator or metric.' },
+                { name: 'indicatorGroupDescriptor', type: 'string', maxLength: 306, nullable: true, description: 'The name for a group of indicators.' },
+                { name: 'indicatorLevelDescriptor', type: 'string', maxLength: 306, nullable: true, description: 'The value as a controlled-vocabulary entry.' },
+                { name: 'indicatorValue', type: 'string', maxLength: 60, nullable: true, description: 'The value of the indicator or metric.' },
+                { name: 'designatedBy', type: 'string', maxLength: 60, nullable: true, description: 'The person or organization that defined the metric.' }
+              ] },
+            { name: 'institutionTelephones[]', kind: 'inner-collection',
+              description: 'The 10-digit telephone number(s) for the education entity.',
+              fields: [
+                { name: 'institutionTelephoneNumberTypeDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The type of communication number.' },
+                { name: 'telephoneNumber', type: 'string', maxLength: 24, required: true, description: 'The telephone number including the area code and extension, if applicable.' }
+              ] },
+            { name: 'internationalAddresses[]', kind: 'inner-collection',
+              description: 'International physical location of the education entity.',
+              fields: [
+                { name: 'addressTypeDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The type of address.' },
+                { name: 'countryDescriptor', type: 'string', maxLength: 306, required: true, description: 'The country (ISO 3166 2-letter codes recommended).' },
+                { name: 'addressLine1', type: 'string', maxLength: 150, required: true, description: 'The first line of the address.' },
+                { name: 'addressLine2', type: 'string', maxLength: 150, nullable: true, description: 'The second line of the address.' },
+                { name: 'addressLine3', type: 'string', maxLength: 150, nullable: true, description: 'The third line of the address.' },
+                { name: 'addressLine4', type: 'string', maxLength: 150, nullable: true, description: 'The fourth line of the address.' },
+                { name: 'beginDate', type: 'string', format: 'date', nullable: true, description: 'First date the address is valid.' },
+                { name: 'endDate', type: 'string', format: 'date', nullable: true, description: 'Last date the address is valid.' },
+                { name: 'latitude', type: 'string', maxLength: 20, nullable: true, description: 'Geographic latitude.' },
+                { name: 'longitude', type: 'string', maxLength: 20, nullable: true, description: 'Geographic longitude.' }
+              ] }
+          ]
         },
         'edFi.staff': {
           displayName: 'edFi.staff',
           role: 'external',
           path: '/ed-fi/staffs',
           description: 'Ed-Fi core entity: an individual who performs specified activities for any public or private education institution.',
-          identityKey: 'staffUniqueId'
+          identity: ['staffUniqueId'],
+          required: ['firstName', 'lastSurname', 'staffUniqueId'],
+          references: [],
+          properties: {
+            staffUniqueId: { type: 'string', maxLength: 32, identity: true, required: true, description: 'A unique alphanumeric code assigned to a staff member.' },
+            firstName: { type: 'string', maxLength: 75, required: true, description: 'A name given to an individual at birth, baptism, or during another naming ceremony, or through legal change.' },
+            lastSurname: { type: 'string', maxLength: 75, required: true, description: 'The name borne in common by members of a family.' },
+            middleName: { type: 'string', maxLength: 75, nullable: true, description: 'A secondary name.' },
+            generationCodeSuffix: { type: 'string', maxLength: 10, nullable: true, description: 'Generation suffix (e.g., Jr., Sr., III).' },
+            personalTitlePrefix: { type: 'string', maxLength: 30, nullable: true, description: 'A prefix denoting title, degree, position, or seniority.' },
+            preferredFirstName: { type: 'string', maxLength: 75, nullable: true, description: 'The first name the individual prefers, if different from their legal first name.' },
+            preferredLastSurname: { type: 'string', maxLength: 75, nullable: true, description: 'The last name the individual prefers, if different from their legal last name.' },
+            maidenName: { type: 'string', maxLength: 75, nullable: true, description: 'The individual’s maiden name.' },
+            birthDate: { type: 'string', format: 'date', nullable: true, description: 'The month, day, and year on which an individual was born.' },
+            sexDescriptor: { type: 'string', maxLength: 306, nullable: true, description: 'The birth sex of the staff member.' },
+            genderIdentity: { type: 'string', maxLength: 60, nullable: true, description: 'The gender the staff member identifies themselves as.' },
+            citizenshipStatusDescriptor: { type: 'string', maxLength: 306, nullable: true, description: 'An indicator of whether or not the person is a U.S. citizen.' },
+            highestCompletedLevelOfEducationDescriptor: { type: 'string', maxLength: 306, nullable: true, description: 'The extent of formal instruction received (highest grade or degree).' },
+            yearsOfPriorProfessionalExperience: { type: 'number', format: 'double', nullable: true, description: 'Total years previously held a similar professional position.' },
+            yearsOfPriorTeachingExperience: { type: 'number', format: 'double', nullable: true, description: 'Total years previously held a teaching position.' },
+            highlyQualifiedTeacher: { type: 'boolean', nullable: true, description: 'Whether the teacher is classified as highly qualified for ALL sections being taught.' },
+            loginId: { type: 'string', maxLength: 60, nullable: true, description: 'The login ID for the user; used for security access control.' }
+          },
+          children: [
+            { name: 'addresses[]', kind: 'inner-collection',
+              description: 'The address(es) of the staff member.',
+              fields: [
+                { name: 'addressTypeDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The type of address.' },
+                { name: 'stateAbbreviationDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'State or outlying area abbreviation.' },
+                { name: 'city', type: 'string', maxLength: 30, identity: true, required: true, description: 'City name.' },
+                { name: 'postalCode', type: 'string', maxLength: 17, identity: true, required: true, description: 'Five- or nine-digit zip code.' },
+                { name: 'streetNumberName', type: 'string', maxLength: 150, identity: true, required: true, description: 'Street number and street name or PO box.' },
+                { name: 'apartmentRoomSuiteNumber', type: 'string', maxLength: 50, nullable: true, description: 'Apartment, room, or suite number.' },
+                { name: 'nameOfCounty', type: 'string', maxLength: 30, nullable: true, description: 'County, parish, or borough name.' },
+                { name: 'doNotPublishIndicator', type: 'boolean', nullable: true, description: 'Indicates the address should not be published.' }
+              ] },
+            { name: 'ancestryEthnicOrigins[]', kind: 'inner-collection',
+              description: 'The original peoples or cultures with which the individual identifies.',
+              fields: [
+                { name: 'ancestryEthnicOriginDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The original peoples or cultures with which the individual identifies.' }
+              ] },
+            { name: 'credentials[]', kind: 'inner-collection',
+              description: 'The legal document(s) giving authorization to perform teaching assignment services.',
+              fields: [
+                { name: 'credentialReference', type: 'reference', target: 'edFi.credential', required: true, description: 'Reference to the credential (identified by credentialIdentifier + stateOfIssueStateAbbreviationDescriptor).' }
+              ] },
+            { name: 'electronicMails[]', kind: 'inner-collection',
+              description: 'The email address(es) for the staff member.',
+              fields: [
+                { name: 'electronicMailTypeDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'Type of email (Home/Personal, Work, etc.).' },
+                { name: 'electronicMailAddress', type: 'string', maxLength: 128, identity: true, required: true, description: 'The email address.' },
+                { name: 'primaryEmailAddressIndicator', type: 'boolean', nullable: true, description: 'Indicates the principal email address.' },
+                { name: 'doNotPublishIndicator', type: 'boolean', nullable: true, description: 'Indicates the email should not be published.' }
+              ] },
+            { name: 'identificationCodes[]', kind: 'inner-collection',
+              description: 'Unique numbers or codes assigned to a staff member by schools, agencies, or systems.',
+              fields: [
+                { name: 'staffIdentificationSystemDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The coding scheme.' },
+                { name: 'identificationCode', type: 'string', maxLength: 60, required: true, description: 'A unique number or alphanumeric code.' },
+                { name: 'assigningOrganizationIdentificationCode', type: 'string', maxLength: 60, nullable: true, description: 'Organization code or name assigning the identification code.' }
+              ] },
+            { name: 'identificationDocuments[]', kind: 'inner-collection',
+              description: 'Documents used to establish identity (e.g., birth certificate, passport).',
+              fields: [
+                { name: 'identificationDocumentUseDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'Primary function of the document.' },
+                { name: 'personalInformationVerificationDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The category of the document relative to its purpose.' },
+                { name: 'documentTitle', type: 'string', maxLength: 60, nullable: true, description: 'Title of the document.' },
+                { name: 'documentExpirationDate', type: 'string', format: 'date', nullable: true, description: 'Document expiration date.' },
+                { name: 'issuerName', type: 'string', maxLength: 150, nullable: true, description: 'Issuing entity name.' },
+                { name: 'issuerCountryDescriptor', type: 'string', maxLength: 306, nullable: true, description: 'Country of origin of the document.' },
+                { name: 'issuerDocumentIdentificationCode', type: 'string', maxLength: 60, nullable: true, description: 'Issuer’s identification code for the document.' }
+              ] },
+            { name: 'internationalAddresses[]', kind: 'inner-collection',
+              description: 'International physical address(es).',
+              fields: [
+                { name: 'addressTypeDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'Type of address.' },
+                { name: 'countryDescriptor', type: 'string', maxLength: 306, required: true, description: 'The country.' },
+                { name: 'addressLine1', type: 'string', maxLength: 150, required: true, description: 'First line of the address.' },
+                { name: 'addressLine2', type: 'string', maxLength: 150, nullable: true, description: 'Second line.' },
+                { name: 'beginDate', type: 'string', format: 'date', nullable: true, description: 'First date the address is valid.' },
+                { name: 'endDate', type: 'string', format: 'date', nullable: true, description: 'Last date the address is valid.' }
+              ] },
+            { name: 'languages[]', kind: 'inner-collection',
+              description: 'Language(s) the individual uses to communicate (ISO 639-2 codes recommended).',
+              fields: [
+                { name: 'languageDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'Spoken or written language.' }
+              ] },
+            { name: 'otherNames[]', kind: 'inner-collection',
+              description: 'Other names (alias, nickname, previous legal name).',
+              fields: [
+                { name: 'otherNameTypeDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'Type of alternate name.' },
+                { name: 'firstName', type: 'string', maxLength: 75, required: true, description: 'First name.' },
+                { name: 'lastSurname', type: 'string', maxLength: 75, required: true, description: 'Last surname.' },
+                { name: 'middleName', type: 'string', maxLength: 75, nullable: true, description: 'Middle name.' },
+                { name: 'generationCodeSuffix', type: 'string', maxLength: 10, nullable: true, description: 'Generation suffix.' },
+                { name: 'personalTitlePrefix', type: 'string', maxLength: 30, nullable: true, description: 'Personal title prefix.' }
+              ] },
+            { name: 'personalIdentificationDocuments[]', kind: 'inner-collection',
+              description: 'Documents presented to verify personal identity.',
+              fields: [
+                { name: 'identificationDocumentUseDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'Primary function of the document.' },
+                { name: 'personalInformationVerificationDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The category of the document relative to its purpose.' },
+                { name: 'documentTitle', type: 'string', maxLength: 60, nullable: true, description: 'Title of the document.' },
+                { name: 'documentExpirationDate', type: 'string', format: 'date', nullable: true, description: 'Document expiration date.' },
+                { name: 'issuerName', type: 'string', maxLength: 150, nullable: true, description: 'Issuing entity name.' },
+                { name: 'issuerCountryDescriptor', type: 'string', maxLength: 306, nullable: true, description: 'Country of origin of the document.' }
+              ] },
+            { name: 'races[]', kind: 'inner-collection',
+              description: 'The general racial category which most clearly reflects the individual’s recognition or identity.',
+              fields: [
+                { name: 'raceDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The general racial category.' }
+              ] },
+            { name: 'recognitions[]', kind: 'inner-collection',
+              description: 'Recognitions given for accomplishments in co-curricular or extracurricular activities.',
+              fields: [
+                { name: 'recognitionTypeDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The nature of the recognition.' },
+                { name: 'achievementTitle', type: 'string', maxLength: 60, nullable: true, description: 'Title of the achievement.' },
+                { name: 'achievementCategoryDescriptor', type: 'string', maxLength: 306, nullable: true, description: 'Category of achievement.' },
+                { name: 'recognitionAwardDate', type: 'string', format: 'date', nullable: true, description: 'The date the recognition was awarded.' },
+                { name: 'recognitionAwardExpiresDate', type: 'string', format: 'date', nullable: true, description: 'Date the recognition expires.' },
+                { name: 'issuerName', type: 'string', maxLength: 150, nullable: true, description: 'The agent, entity, or institution issuing the award.' }
+              ] },
+            { name: 'telephones[]', kind: 'inner-collection',
+              description: 'The 10-digit telephone number(s) for the staff member.',
+              fields: [
+                { name: 'telephoneNumberTypeDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'Type of communication number.' },
+                { name: 'telephoneNumber', type: 'string', maxLength: 24, identity: true, required: true, description: 'The telephone number with area code and extension.' },
+                { name: 'orderOfPriority', type: 'integer', format: 'int32', nullable: true, description: 'Priority order; which number to attempt first.' },
+                { name: 'textMessageCapabilityIndicator', type: 'boolean', nullable: true, description: 'Indicates SMS capability.' },
+                { name: 'doNotPublishIndicator', type: 'boolean', nullable: true, description: 'Indicates the number should not be published.' }
+              ] },
+            { name: 'tribalAffiliations[]', kind: 'inner-collection',
+              description: 'American Indian tribe(s) with which the staff member is affiliated.',
+              fields: [
+                { name: 'tribalAffiliationDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The tribal affiliation.' }
+              ] },
+            { name: 'visas[]', kind: 'inner-collection',
+              description: 'Indicator of a non-US citizen’s Visa type.',
+              fields: [
+                { name: 'visaDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'Visa type.' }
+              ] }
+          ]
         }
       }
     };
@@ -1180,17 +1451,9 @@
           <div class="path">${escapeHtml(r.path || '')}</div>
           <div class="pill-row">
             ${rolePill(r.role)}
-            ${isExternal ? `<span class="pill external">${icon('i-link')} External</span>` : ''}
           </div>
           ${r.description ? `<div class="meta-row"><div class="meta-item" style="max-width:100%">${escapeHtml(r.description)}</div></div>` : ''}
-          ${isExternal ? `<div class="meta-row"><div class="meta-item">${icon('i-key')} <span>identity key</span> <span class="meta-val">${escapeHtml(r.identityKey || '')}</span></div></div>` : ''}
         </div>`;
-
-      if (isExternal) {
-        inspector.innerHTML = `<div class="bento">${headerCard}</div>`;
-        inspector.scrollTo({ top: 0, behavior: REDUCED_MOTION ? 'auto' : 'smooth' });
-        return;
-      }
 
       // ---------- identity card ----------
       const identityCard = `
