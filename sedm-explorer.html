@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEDM Schema Explorer — Ed-Fi Special Education Data Model</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:wght@500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+  <script src="https://unpkg.com/layout-base@2.0.1/layout-base.js"></script>
+  <script src="https://unpkg.com/cose-base@2.2.0/cose-base.js"></script>
+  <script src="https://unpkg.com/cytoscape-fcose@2.2.0/cytoscape-fcose.js"></script>
+
+  <style>
+    :root {
+      /* Dark theme — high contrast for legibility */
+      --bg-page: #0B1220;
+      --bg-card: #111A2E;
+      --bg-card-2: #162039;
+      --bg-chip: #1E293B;
+      --bg-chip-hover: #334155;
+      --bg-graph: #0E1729;
+      --text-primary: #F1F5F9;
+      --text-secondary: #CBD5E1;
+      --text-muted: #94A3B8;
+      --text-inverse: #0F172A;
+      --border-hairline: #1F2A44;
+      --border-strong: #334155;
+      --hub: #2DD4BF;             /* teal-400, AA on dark */
+      --hub-soft: rgba(45,212,191,0.14);
+      --hub-border: rgba(45,212,191,0.45);
+      --resource: #60A5FA;        /* blue-400 */
+      --resource-soft: rgba(96,165,250,0.14);
+      --resource-border: rgba(96,165,250,0.45);
+      --event: #FBBF24;           /* amber-400 */
+      --event-soft: rgba(251,191,36,0.14);
+      --event-border: rgba(251,191,36,0.45);
+      --external: #94A3B8;
+      --external-soft: rgba(148,163,184,0.16);
+      --focus: #93C5FD;           /* blue-300, clearly visible on dark */
+      --shadow-card: 0 1px 2px rgba(0,0,0,0.4), 0 6px 18px rgba(0,0,0,0.35);
+      --shadow-hover: 0 2px 4px rgba(0,0,0,0.5), 0 10px 26px rgba(0,0,0,0.45);
+      --radius-ctrl: 8px;
+      --radius-card: 12px;
+      --radius-pill: 999px;
+      --ease: cubic-bezier(0.2, 0, 0, 1);
+      --t-fast: 150ms;
+      --t-base: 220ms;
+      --t-slow: 280ms;
+      --font-display: "Source Serif 4", Georgia, serif;
+      --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+      --font-mono: "JetBrains Mono", "Consolas", "Courier New", monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body { margin: 0; padding: 0; height: 100%; }
+
+    body {
+      font-family: var(--font-ui);
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      background: var(--bg-page);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+    }
+
+    body { color-scheme: dark; }
+
+    /* ====================== Header ====================== */
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 20px;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-hairline);
+      z-index: 5;
+    }
+    header h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 18px;
+      line-height: 1.35;
+      color: var(--text-primary);
+    }
+    header .subtitle {
+      font-family: var(--font-ui);
+      font-weight: 400;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-left: 8px;
+    }
+
+    .btn {
+      font-family: var(--font-ui);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-ctrl);
+      padding: 8px 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 40px;
+      transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+    }
+    .btn:hover { background: var(--bg-chip); }
+    .btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .btn .label-text { white-space: nowrap; }
+
+    /* ====================== Main layout ====================== */
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(420px, 1fr);
+      gap: 16px;
+      padding: 16px 20px 20px;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    #cy-wrap {
+      background: var(--bg-graph);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-card);
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+    }
+    #cy {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+    }
+    #cy:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: -2px;
+    }
+
+    .legend {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      background: rgba(17,26,46,0.92);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-ctrl);
+      padding: 10px 12px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      backdrop-filter: blur(6px);
+      pointer-events: none;
+      max-width: 280px;
+    }
+    .legend-row { display: flex; align-items: center; gap: 8px; margin: 2px 0; }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+    .legend-line { width: 22px; height: 0; flex: none; border-top: 2px solid; }
+    .legend-line.dashed { border-top-style: dashed; }
+    .legend-line.thin { border-top-width: 1px; }
+
+    /* ====================== Inspector (bento) ====================== */
+    #inspector {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      padding-right: 4px;
+      min-height: 0;
+    }
+    #inspector::-webkit-scrollbar { width: 8px; }
+    #inspector::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+
+    .bento {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-card);
+      padding: 16px;
+    }
+    .card-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+    .card-count {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .header-card .name {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0 0 4px;
+      line-height: 1.25;
+      word-break: break-word;
+    }
+    .header-card .path {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      word-break: break-all;
+    }
+    .header-card .pill-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+    .pill.hub { background: var(--hub-soft); color: var(--hub); }
+    .pill.resource { background: var(--resource-soft); color: var(--resource); }
+    .pill.event { background: var(--event-soft); color: var(--event); }
+    .pill.external { background: var(--external-soft); color: var(--external); }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      min-height: 28px;
+      border-radius: var(--radius-pill);
+      background: var(--bg-chip);
+      border: 1px solid var(--border-hairline);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+    .chip svg { color: var(--text-muted); flex: none; }
+    .chip.identity {
+      background: var(--hub-soft);
+      border-color: var(--hub-border);
+      color: var(--hub);
+    }
+    .chip.identity svg { color: var(--hub); }
+    .chip.required {
+      background: var(--resource-soft);
+      border-color: var(--resource-border);
+      color: var(--resource);
+    }
+    .chip.required svg { color: var(--resource); }
+
+    button.chip {
+      cursor: pointer;
+      transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+    }
+    button.chip:hover {
+      background: var(--bg-chip-hover);
+      border-color: var(--border-strong);
+      box-shadow: var(--shadow-card);
+    }
+    button.chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    button.chip.ref {
+      background: var(--bg-card-2);
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+    }
+    button.chip.ref .ref-target {
+      color: var(--resource);
+      font-weight: 600;
+    }
+    button.chip.ref svg.arrow { color: var(--text-muted); }
+
+    table.props {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    table.props thead th {
+      position: sticky;
+      top: 0;
+      background: var(--bg-card);
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      padding: 8px 8px;
+      border-bottom: 1px solid var(--border-hairline);
+      z-index: 1;
+    }
+    table.props tbody td {
+      padding: 8px;
+      border-bottom: 1px solid var(--border-hairline);
+      vertical-align: top;
+      color: var(--text-primary);
+    }
+    table.props tbody tr:last-child td { border-bottom: none; }
+    table.props tbody tr.identity td:first-child {
+      border-left: 3px solid var(--hub);
+      padding-left: 6px;
+    }
+    table.props .prop-name {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    table.props .prop-type {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    table.props .prop-desc {
+      color: var(--text-secondary);
+      font-size: 12.5px;
+      line-height: 1.4;
+    }
+    table.props .flag {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: var(--radius-pill);
+      font-size: 10px;
+      font-weight: 500;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    table.props .flag.identity { background: var(--hub-soft); color: var(--hub); border: 1px solid var(--hub-border); }
+    table.props .flag.required { background: var(--resource-soft); color: var(--resource); border: 1px solid var(--resource-border); }
+    table.props .flag.nullable { background: var(--bg-chip); color: var(--text-secondary); border: 1px solid var(--border-hairline); }
+
+    details.collection {
+      border: 1px solid var(--border-hairline);
+      border-radius: var(--radius-ctrl);
+      background: var(--bg-card-2);
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    details.collection > summary {
+      cursor: pointer;
+      list-style: none;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--text-primary);
+      user-select: none;
+      transition: background var(--t-fast) var(--ease);
+    }
+    details.collection > summary::-webkit-details-marker { display: none; }
+    details.collection > summary:hover { background: var(--bg-chip); }
+    details.collection > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+    details.collection > summary .chevron {
+      transition: transform var(--t-base) var(--ease);
+      color: var(--text-muted);
+      flex: none;
+    }
+    details.collection[open] > summary .chevron {
+      transform: rotate(180deg);
+    }
+    details.collection > summary .col-name { font-weight: 500; }
+    details.collection > summary .col-desc {
+      font-family: var(--font-ui);
+      color: var(--text-secondary);
+      font-size: 11.5px;
+      font-weight: 400;
+      margin-left: auto;
+      max-width: 60%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .collection-body {
+      padding: 4px 12px 12px 24px;
+      border-top: 1px solid var(--border-hairline);
+      border-left: 2px solid var(--border-hairline);
+      margin-left: 16px;
+    }
+    .collection-body details.collection { margin-top: 6px; }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 48px 24px;
+      text-align: center;
+      color: var(--text-secondary);
+    }
+    .empty-state .icon { color: var(--text-muted); }
+    .empty-state .heading {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .empty-state .sub { font-size: 13px; color: var(--text-secondary); max-width: 320px; }
+
+    .meta-row {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .meta-row .meta-item { display: inline-flex; align-items: center; gap: 4px; }
+    .meta-row .meta-item .meta-val {
+      font-family: var(--font-mono);
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    /* ====================== Icon defs ====================== */
+    .icon { width: 16px; height: 16px; stroke-width: 2; flex: none; }
+    .icon-sm { width: 14px; height: 14px; }
+    .icon-lg { width: 32px; height: 32px; stroke-width: 1.6; }
+
+    /* ====================== Responsive ====================== */
+    @media (min-width: 1440px) {
+      main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .bento { grid-template-columns: 1fr 1fr; }
+      .bento .span-full { grid-column: 1 / -1; }
+    }
+    @media (min-width: 1920px) {
+      main { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); }
+    }
+    @media (max-width: 1023px) {
+      main {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(50vh, 1fr) auto;
+        gap: 12px;
+      }
+      #inspector {
+        max-height: 45vh;
+        padding-right: 0;
+      }
+      .bento { grid-template-columns: 1fr 1fr; }
+      .bento .span-full { grid-column: 1 / -1; }
+    }
+    @media (max-width: 767px) {
+      header { padding: 10px 12px; grid-template-columns: 1fr auto; }
+      header h1 { font-size: 15px; }
+      header .subtitle { display: none; }
+      .btn .label-text { display: none; }
+      main { padding: 10px 12px 14px; grid-template-rows: minmax(50vh, 1fr) auto; }
+      .bento { grid-template-columns: 1fr; }
+      .legend { display: none; }
+    }
+
+    /* ====================== Reduced motion ====================== */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Inline Lucide-style icon symbol library -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+      </symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
+        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
+      </symbol>
+      <symbol id="i-chev-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 9 6 6 6-6"/>
+      </symbol>
+      <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+      </symbol>
+      <symbol id="i-asterisk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 6v12"/><path d="M17.196 9 6.804 15"/><path d="m6.804 9 10.392 6"/>
+      </symbol>
+      <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/>
+        <path d="m21 2-9.6 9.6"/>
+        <circle cx="7.5" cy="15.5" r="5.5"/>
+      </symbol>
+      <symbol id="i-click" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 4.1 12 6"/>
+        <path d="m5.1 8-2.9-.8"/>
+        <path d="m6 12-1.9 2"/>
+        <path d="M7.2 2.2 8 5.1"/>
+        <path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z"/>
+      </symbol>
+      <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+      </symbol>
+      <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+      </symbol>
+      <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/>
+        <line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/>
+        <line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <header>
+    <div>
+      <h1 style="display:inline">SEDM Schema Explorer</h1>
+      <span class="subtitle">Ed-Fi Special Education Data Model · 7 resources</span>
+    </div>
+    <button class="btn" id="resetView" aria-label="Reset view">
+      <svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg>
+      <span class="label-text">Reset view</span>
+    </button>
+  </header>
+
+  <main>
+    <div id="cy-wrap">
+      <div id="cy" role="application" tabindex="0" aria-label="Resource graph. Use arrow keys to cycle nodes, Enter to inspect."></div>
+      <div class="legend" aria-hidden="true">
+        <div class="legend-row"><span class="legend-swatch" style="background:#2DD4BF"></span><span>studentIEP (hub)</span></div>
+        <div class="legend-row"><span class="legend-swatch" style="background:#60A5FA"></span><span>SEDM resource</span></div>
+        <div class="legend-row"><span class="legend-swatch" style="background:#FBBF24"></span><span>ideaEvent</span></div>
+        <div class="legend-row"><span class="legend-swatch" style="background:#334155;border:1px solid #64748B"></span><span>External Ed-Fi reference</span></div>
+        <div class="legend-row"><span class="legend-line" style="color:#60A5FA"></span><span>required reference</span></div>
+        <div class="legend-row"><span class="legend-line dashed" style="color:#60A5FA"></span><span>optional reference</span></div>
+        <div class="legend-row"><span class="legend-line dashed" style="color:#FBBF24"></span><span>ideaEvents[ ] membership</span></div>
+      </div>
+    </div>
+    <aside id="inspector" aria-live="polite" aria-label="Resource inspector"></aside>
+  </main>
+
+  <script>
+    // ===========================================================================
+    // SCHEMA — extracted verbatim from
+    //   https://swaggerui.districts-2526-ds52.sc.startingblocks.org/greenwood50/metadata/data/v3/resources/swagger.json
+    // (Ed-Fi Operational Data Store API v3, OpenAPI 3.0.1)
+    // ===========================================================================
+    const SCHEMA = {
+      resources: {
+        sedm_ideaEvent: {
+          displayName: 'ideaEvent',
+          role: 'event',
+          path: '/sedm/ideaEvents',
+          description: 'A record of an IDEA-related event for a student (e.g. evaluation, eligibility determination).',
+          identity: ['ideaEventDescriptor', 'ideaEventID', 'educationOrganizationId (via educationOrganizationReference)', 'studentUniqueId (via studentReference)'],
+          required: ['ideaEventDescriptor', 'ideaEventID', 'beginDate', 'endDate', 'educationOrganizationReference', 'studentReference'],
+          references: [
+            { name: 'educationOrganizationReference', target: 'edFi.educationOrganization', kind: 'reference-required' },
+            { name: 'studentReference', target: 'edFi.student', kind: 'reference-required' }
+          ],
+          properties: {
+            ideaEventDescriptor: { type: 'string', maxLength: 306, identity: true, required: true, description: 'The IDEA event recorded for the student.' },
+            ideaEventID: { type: 'string', maxLength: 128, identity: true, required: true, description: 'A unique identifier for the event record as assigned by the provider of IEP services.' },
+            beginDate: { type: 'string', format: 'date', required: true, description: 'The date when the IDEA related event started.' },
+            endDate: { type: 'string', format: 'date', required: true, description: 'The date when the IDEA event concluded.' },
+            eventComplianceDescriptor: { type: 'string', maxLength: 306, nullable: true, description: 'The type of compliance represented by this event.' },
+            eventNarrative: { type: 'string', maxLength: 2048, nullable: true, description: 'Detailed and summary notes recorded during the event.' },
+            eventReasonDescriptor: { type: 'string', maxLength: 306, nullable: true, description: 'The reason why the IDEA event occured.' }
+          },
+          children: []
+        },
+
+        sedm_studentIEP: {
+          displayName: 'studentIEP',
+          role: 'hub',
+          path: '/sedm/studentIEPs',
+          description: 'The Individualized Education Program for a student, finalized on a specific date.',
+          identity: ['iepFinalizedDate', 'studentIEPAssociationID', 'educationOrganizationId (via educationOrganizationReference)', 'studentUniqueId (via studentReference)'],
+          required: ['iepFinalizedDate', 'studentIEPAssociationID', 'iepStatusDescriptor', 'iepBeginDate', 'iepEndDate', 'educationOrganizationReference', 'studentReference'],
+          references: [
+            { name: 'educationOrganizationReference', target: 'edFi.educationOrganization', kind: 'reference-required' },
+            { name: 'studentReference', target: 'edFi.student', kind: 'reference-required' }
+          ],
+          properties: {
+            iepFinalizedDate: { type: 'string', format: 'date', identity: true, required: true, description: 'The date the most recent IEP was finalized.' },
+            studentIEPAssociationID: { type: 'string', maxLength: 128, identity: true, required: true, description: 'A unique identifier assigned by the provider or source system of IEP services.' },
+            iepAmendedDate: { type: 'string', format: 'date', nullable: true, description: 'The date when IEP was last amended, if any.' },
+            iepBeginDate: { type: 'string', format: 'date', required: true, description: 'The effective start date of the most recent IEP.' },
+            iepEndDate: { type: 'string', format: 'date', required: true, description: 'The effective end date of the most recent IEP.' },
+            iepStatusDescriptor: { type: 'string', maxLength: 306, required: true, description: 'The current status of this IEP.' },
+            medicallyFragile: { type: 'boolean', nullable: true, description: 'Whether the student has been designated medically fragile.' },
+            multiplyDisabled: { type: 'boolean', nullable: true, description: 'Whether the student has been designated as multiply disabled.' },
+            reasonExitedDescriptor: { type: 'string', maxLength: 306, nullable: true, description: 'The reason the student left and stopped receiving special education services.' },
+            schoolHoursPerWeek: { type: 'number', format: 'double', nullable: true, description: 'Total hours of instructional time per week for the school the student attends.' },
+            specialEducationHoursPerWeek: { type: 'number', format: 'double', nullable: true, description: 'Total hours per week specific to special education related services.' },
+            specialEducationSettingDescriptor: { type: 'string', maxLength: 306, nullable: true, description: 'The major instructional setting (more than 50 percent of the student’s special education program).' }
+          },
+          children: [
+            { name: 'ideaEvents[]', kind: 'membership', target: 'sedm_ideaEvent',
+              description: 'Unordered collection of student IDEA events referenced by this IEP.',
+              fields: [{ name: 'ideaEventReference', type: 'reference', target: 'sedm_ideaEvent', required: true }] }
+          ]
+        },
+
+        sedm_studentIEPAccommodationCollection: {
+          displayName: 'studentIEPAccommodationCollection',
+          role: 'resource',
+          path: '/sedm/studentIEPAccommodationCollections',
+          description: 'The set of accommodations attached to a single IEP.',
+          identity: ['iepFinalizedDate', 'studentIEPAssociationID', 'educationOrganizationId', 'studentUniqueId (all via studentIEPReference)'],
+          required: ['accommodations', 'studentIEPReference'],
+          references: [
+            { name: 'studentIEPReference', target: 'sedm_studentIEP', kind: 'reference-required' }
+          ],
+          properties: {},
+          children: [
+            { name: 'accommodations[]', kind: 'inner-collection',
+              description: 'Special variations in how services are presented, administered, or how the student responds.',
+              fields: [
+                { name: 'accommodationDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'The accommodation applied.' }
+              ] }
+          ]
+        },
+
+        sedm_studentIEPDisabilityCollection: {
+          displayName: 'studentIEPDisabilityCollection',
+          role: 'resource',
+          path: '/sedm/studentIEPDisabilityCollections',
+          description: 'The set of disability conditions attached to a single IEP, with optional designations.',
+          identity: ['iepFinalizedDate', 'studentIEPAssociationID', 'educationOrganizationId', 'studentUniqueId (all via studentIEPReference)'],
+          required: ['disabilities', 'studentIEPReference'],
+          references: [
+            { name: 'studentIEPReference', target: 'sedm_studentIEP', kind: 'reference-required' }
+          ],
+          properties: {},
+          children: [
+            { name: 'disabilities[]', kind: 'inner-collection',
+              description: 'The disability condition(s) that best describe an individual’s impairment as related to special education services received.',
+              fields: [
+                { name: 'disabilityDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'A disability category that describes an individual’s impairment.' },
+                { name: 'disabilityDeterminationSourceTypeDescriptor', type: 'string', maxLength: 306, nullable: true, description: 'The source that provided the disability determination.' },
+                { name: 'disabilityDiagnosis', type: 'string', maxLength: 80, nullable: true, description: 'A description of the disability diagnosis.' },
+                { name: 'orderOfDisability', type: 'integer', format: 'int32', nullable: true, description: 'Order by severity: 1 = Primary, 2 = Secondary, 3 = Tertiary, etc.' }
+              ],
+              children: [
+                { name: 'designations[]', kind: 'inner-collection',
+                  description: 'Whether the disability is IDEA, Section 504, or other disability designation.',
+                  fields: [
+                    { name: 'disabilityDesignationDescriptor', type: 'string', maxLength: 306, identity: true, required: true, description: 'Whether the disability is IDEA, Section 504, or other designation.' }
+                  ] }
+              ] }
+          ]
+        },
+
+        sedm_studentIEPGoal: {
+          displayName: 'studentIEPGoal',
+          role: 'resource',
+          path: '/sedm/studentIEPGoals',
+          description: 'A focused goal prescribed as part of the IEP. Examples: Academic Goal, Behavioral Goal, Attendance Goal.',
+          identity: ['iepGoalID', 'iepFinalizedDate', 'studentIEPAssociationID', 'educationOrganizationId', 'studentUniqueId (last four via studentIEPReference)'],
+          required: ['iepGoalID', 'iepGoalDescriptor', 'iepGoalDetails', 'studentIEPReference'],
+          references: [
+            { name: 'studentIEPReference', target: 'sedm_studentIEP', kind: 'reference-required' }
+          ],
+          properties: {
+            iepGoalID: { type: 'string', maxLength: 128, identity: true, required: true, description: 'A unique identifier assigned by the provider of IEP services.' },
+            iepGoalDescriptor: { type: 'string', maxLength: 306, required: true, description: 'A focused goal prescribed as part of the IEP.' },
+            iepGoalDetails: { type: 'string', maxLength: 2048, required: true, description: 'Instructions or other details specific to the student and/or provider for achieving the stated goal.' },
+            goalAchievementPeriodBeginDate: { type: 'string', format: 'date', nullable: true, description: 'First date of the period assigned for achieving the stated goal.' },
+            goalAchievementPeriodEndDate: { type: 'string', format: 'date', nullable: true, description: 'Last date of the period assigned for achieving the stated goal.' }
+          },
+          children: [
+            { name: 'ideaEvents[]', kind: 'membership', target: 'sedm_ideaEvent',
+              description: 'Unordered collection of student IDEA events referenced by this goal.',
+              fields: [{ name: 'ideaEventReference', type: 'reference', target: 'sedm_ideaEvent', required: true }] }
+          ]
+        },
+
+        sedm_studentIEPServiceDelivery: {
+          displayName: 'studentIEPServiceDelivery',
+          role: 'resource',
+          path: '/sedm/studentIEPServiceDeliveries',
+          description: 'A record of a service prescribed under an IEP being delivered to the student on a specific date.',
+          identity: ['iepServiceDeliveryID', 'serviceDeliveryDate', 'serviceDeliveryDescriptor', 'iepFinalizedDate', 'studentIEPAssociationID', 'educationOrganizationId', 'studentUniqueId (last four via studentIEPReference)'],
+          required: ['serviceDeliveryDescriptor', 'iepServiceDeliveryID', 'serviceDeliveryDate', 'studentIEPReference'],
+          references: [
+            { name: 'studentIEPReference', target: 'sedm_studentIEP', kind: 'reference-required' },
+            { name: 'studentIEPServicePrescriptionReference', target: 'sedm_studentIEPServicePrescription', kind: 'reference-optional' }
+          ],
+          properties: {
+            iepServiceDeliveryID: { type: 'string', maxLength: 128, identity: true, required: true, description: 'A unique identifier assigned by the provider for the delivery record.' },
+            serviceDeliveryDate: { type: 'string', format: 'date', identity: true, required: true, description: 'The date when prescribed services were delivered for a student.' },
+            serviceDeliveryDescriptor: { type: 'string', maxLength: 306, identity: true, required: true, description: 'The type of services delivered to the student.' },
+            serviceProviderTypeDescriptor: { type: 'string', maxLength: 306, nullable: true, description: 'Indicates service provider type, including specialist, internal staff, external staff, etc.' }
+          },
+          children: [
+            { name: 'externalServiceProviders[]', kind: 'inner-collection',
+              description: 'External service provider(s) that delivered the prescribed service to the student.',
+              fields: [
+                { name: 'providerCode', type: 'string', maxLength: 1024, identity: true, required: true, description: 'A code assigned to the external service provider.' },
+                { name: 'providerFirstName', type: 'string', maxLength: 1024, identity: true, required: true, description: 'First name of the external service provider.' },
+                { name: 'providerLastSurname', type: 'string', maxLength: 1024, identity: true, required: true, description: 'Last name of the external service provider.' },
+                { name: 'providerMiddleName', type: 'string', maxLength: 1024, nullable: true, description: 'Middle name of the external service provider.' },
+                { name: 'primaryProvider', type: 'boolean', nullable: true, description: 'Primary external service provider.' }
+              ] },
+            { name: 'ideaEvents[]', kind: 'membership', target: 'sedm_ideaEvent',
+              description: 'Unordered collection of student IDEA events referenced by this delivery.',
+              fields: [{ name: 'ideaEventReference', type: 'reference', target: 'sedm_ideaEvent', required: true }] },
+            { name: 'serviceProviders[]', kind: 'inner-collection',
+              description: 'Internal service provider(s) (staff) that delivered the prescribed service to the student.',
+              fields: [
+                { name: 'staffReference', type: 'reference', target: 'edFi.staff', required: true, description: 'Reference to the staff member who provided the service.' },
+                { name: 'primaryProvider', type: 'boolean', nullable: true, description: 'Primary service provider.' }
+              ] }
+          ]
+        },
+
+        sedm_studentIEPServicePrescription: {
+          displayName: 'studentIEPServicePrescription',
+          role: 'resource',
+          path: '/sedm/studentIEPServicePrescriptions',
+          description: 'A service prescribed for a student under an IEP, including frequency, duration, and location.',
+          identity: ['servicePrescriptionDate', 'servicePrescriptionDescriptor', 'iepFinalizedDate', 'studentIEPAssociationID', 'educationOrganizationId', 'studentUniqueId (last four via studentIEPReference)'],
+          required: ['servicePrescriptionDescriptor', 'servicePrescriptionDate', 'durationPeriodDescriptor', 'frequencyPeriodDescriptor', 'serviceLocationTypeDescriptor', 'beginDate', 'durationMinutes', 'frequencyValue', 'studentIEPReference'],
+          references: [
+            { name: 'studentIEPReference', target: 'sedm_studentIEP', kind: 'reference-required' }
+          ],
+          properties: {
+            servicePrescriptionDate: { type: 'string', format: 'date', identity: true, required: true, description: 'The date the service was prescribed.' },
+            servicePrescriptionDescriptor: { type: 'string', maxLength: 306, identity: true, required: true, description: 'The type of service prescribed. Examples: Auditory Specialist, Vocational Therapy.' },
+            beginDate: { type: 'string', format: 'date', required: true, description: 'The effective date when service is to begin.' },
+            endDate: { type: 'string', format: 'date', nullable: true, description: 'The effective date when the prescribed service ended.' },
+            durationMinutes: { type: 'number', format: 'double', required: true, description: 'The length of time for the prescribed service in minutes.' },
+            durationPeriodDescriptor: { type: 'string', maxLength: 306, required: true, description: 'The frequency period for the prescribed service duration. Examples: Per Session, Per Week, Per Month.' },
+            frequencyPeriodDescriptor: { type: 'string', maxLength: 306, required: true, description: 'The frequency period for the prescribed service. Examples: Session, Week, Month.' },
+            frequencyValue: { type: 'number', format: 'double', required: true, description: 'The number of times the prescribed service is to be provided within the specified duration period.' },
+            serviceLocationTypeDescriptor: { type: 'string', maxLength: 306, required: true, description: 'The location type where the prescribed service is to be provided. Examples: Home, Hospital, School.' }
+          },
+          children: [
+            { name: 'ideaEvents[]', kind: 'membership', target: 'sedm_ideaEvent',
+              description: 'Unordered collection of student IDEA events referenced by this prescription.',
+              fields: [{ name: 'ideaEventReference', type: 'reference', target: 'sedm_ideaEvent', required: true }] },
+            { name: 'staffs[]', kind: 'inner-collection',
+              description: 'Staff member(s) assigned to provide the prescribed service.',
+              fields: [
+                { name: 'staffReference', type: 'reference', target: 'edFi.staff', required: true, description: 'Reference to the assigned staff member.' }
+              ] }
+          ]
+        }
+      },
+
+      external: {
+        'edFi.student': {
+          displayName: 'edFi.student',
+          role: 'external',
+          path: '/ed-fi/students',
+          description: 'Ed-Fi core entity: an individual for whom instruction, services, and/or care are provided.',
+          identityKey: 'studentUniqueId'
+        },
+        'edFi.educationOrganization': {
+          displayName: 'edFi.educationOrganization',
+          role: 'external',
+          path: '/ed-fi/educationOrganizations',
+          description: 'Ed-Fi core entity: any agency, school, or institution responsible for or providing education-related services.',
+          identityKey: 'educationOrganizationId'
+        },
+        'edFi.staff': {
+          displayName: 'edFi.staff',
+          role: 'external',
+          path: '/ed-fi/staffs',
+          description: 'Ed-Fi core entity: an individual who performs specified activities for any public or private education institution.',
+          identityKey: 'staffUniqueId'
+        }
+      }
+    };
+
+    // ===========================================================================
+    // Build Cytoscape elements from SCHEMA
+    // ===========================================================================
+    function buildElements(schema) {
+      const nodes = [];
+      const edges = [];
+
+      // Resource nodes
+      for (const [id, r] of Object.entries(schema.resources)) {
+        nodes.push({
+          data: {
+            id,
+            label: r.displayName,
+            role: r.role
+          }
+        });
+      }
+      // External nodes
+      for (const [id, r] of Object.entries(schema.external)) {
+        nodes.push({
+          data: {
+            id,
+            label: r.displayName,
+            role: 'external'
+          }
+        });
+      }
+
+      // Edges from references
+      for (const [id, r] of Object.entries(schema.resources)) {
+        for (const ref of r.references) {
+          edges.push({
+            data: {
+              id: `${id}__${ref.name}`,
+              source: id,
+              target: ref.target,
+              label: ref.name,
+              kind: ref.target.startsWith('edFi.') ? 'external-ref' : ref.kind
+            }
+          });
+        }
+        // Edges from child collections with kind === membership (always to ideaEvent)
+        for (const child of r.children || []) {
+          if (child.kind === 'membership' && child.target) {
+            edges.push({
+              data: {
+                id: `${id}__${child.name}`,
+                source: id,
+                target: child.target,
+                label: child.name,
+                kind: 'membership'
+              }
+            });
+          }
+          // Edges from inner-collection items that contain a reference (e.g. staffReference)
+          for (const f of child.fields || []) {
+            if (f.type === 'reference' && f.target && f.target.startsWith('edFi.')) {
+              edges.push({
+                data: {
+                  id: `${id}__${child.name}__${f.name}`,
+                  source: id,
+                  target: f.target,
+                  label: `${child.name}.${f.name}`,
+                  kind: 'external-ref'
+                }
+              });
+            }
+          }
+        }
+      }
+      // De-dup edges by id (e.g., serviceDelivery.serviceProviders[].staffReference + prescription.staffs[].staffReference both → staff: keep both, distinct ids)
+      return { nodes, edges };
+    }
+
+    // ===========================================================================
+    // Cytoscape stylesheet
+    // ===========================================================================
+    const cyStyle = [
+      {
+        selector: 'node',
+        style: {
+          'label': 'data(label)',
+          'text-valign': 'bottom',
+          'text-halign': 'center',
+          'text-margin-y': 8,
+          'font-family': 'Inter, system-ui, sans-serif',
+          'font-size': 13,
+          'font-weight': 500,
+          'color': '#F1F5F9',
+          'text-outline-color': '#0B1220',
+          'text-outline-width': 3,
+          'text-outline-opacity': 0.9,
+          'text-wrap': 'wrap',
+          'text-max-width': 200,
+          'width': 56,
+          'height': 56,
+          'shape': 'round-rectangle',
+          'border-width': 2,
+          'border-color': '#0B1220',
+          'background-color': '#60A5FA',
+          'transition-property': 'border-color, border-width, background-color, opacity, width, height',
+          'transition-duration': '180ms',
+          'transition-timing-function': 'ease-out'
+        }
+      },
+      {
+        selector: 'node[role = "hub"]',
+        style: {
+          'background-color': '#2DD4BF',
+          'width': 90,
+          'height': 90,
+          'font-size': 15,
+          'font-weight': 700,
+          'color': '#2DD4BF',
+          'text-margin-y': 10
+        }
+      },
+      {
+        selector: 'node[role = "resource"]',
+        style: {
+          'background-color': '#60A5FA',
+          'width': 64,
+          'height': 64,
+          'color': '#BFDBFE'
+        }
+      },
+      {
+        selector: 'node[role = "event"]',
+        style: {
+          'background-color': '#FBBF24',
+          'width': 64,
+          'height': 64,
+          'color': '#FCD34D'
+        }
+      },
+      {
+        selector: 'node[role = "external"]',
+        style: {
+          'background-color': '#334155',
+          'border-color': '#64748B',
+          'color': '#CBD5E1',
+          'font-style': 'italic',
+          'width': 50,
+          'height': 50,
+          'font-size': 12
+        }
+      },
+      {
+        selector: 'node:selected',
+        style: {
+          'border-color': '#93C5FD',
+          'border-width': 4
+        }
+      },
+      {
+        selector: 'node.hl',
+        style: {
+          'border-color': '#93C5FD',
+          'border-width': 4
+        }
+      },
+      {
+        selector: 'node.faded',
+        style: { 'opacity': 0.22 }
+      },
+      {
+        selector: 'edge',
+        style: {
+          'curve-style': 'bezier',
+          'width': 2,
+          'line-color': '#60A5FA',
+          'target-arrow-color': '#60A5FA',
+          'target-arrow-shape': 'triangle',
+          'arrow-scale': 1,
+          'opacity': 0.85,
+          'transition-property': 'line-color, target-arrow-color, opacity, width',
+          'transition-duration': '180ms'
+        }
+      },
+      {
+        selector: 'edge[kind = "reference-optional"]',
+        style: {
+          'line-style': 'dashed',
+          'line-dash-pattern': [6, 3]
+        }
+      },
+      {
+        selector: 'edge[kind = "membership"]',
+        style: {
+          'line-color': '#FBBF24',
+          'target-arrow-color': '#FBBF24',
+          'target-arrow-shape': 'triangle-backcurve',
+          'line-style': 'dashed',
+          'line-dash-pattern': [4, 4],
+          'width': 1.5,
+          'opacity': 0.75
+        }
+      },
+      {
+        selector: 'edge[kind = "external-ref"]',
+        style: {
+          'line-color': '#64748B',
+          'target-arrow-color': '#64748B',
+          'target-arrow-shape': 'none',
+          'width': 1.25,
+          'opacity': 0.7
+        }
+      },
+      {
+        selector: 'edge.hl',
+        style: { 'width': 3.5, 'opacity': 1 }
+      },
+      {
+        selector: 'edge.faded',
+        style: { 'opacity': 0.12 }
+      }
+    ];
+
+    // ===========================================================================
+    // Init Cytoscape
+    // ===========================================================================
+    const { nodes, edges } = buildElements(SCHEMA);
+    const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const cy = cytoscape({
+      container: document.getElementById('cy'),
+      elements: [...nodes, ...edges],
+      style: cyStyle,
+      minZoom: 0.4,
+      maxZoom: 2.2,
+      wheelSensitivity: 0.25,
+      layout: {
+        name: 'fcose',
+        quality: 'proof',
+        randomize: false,
+        animate: !REDUCED_MOTION,
+        animationDuration: REDUCED_MOTION ? 0 : 600,
+        padding: 60,
+        nodeRepulsion: 13000,
+        idealEdgeLength: edge => edge.data('kind') === 'membership' ? 130 : 210,
+        edgeElasticity: 0.45,
+        gravity: 0.2,
+        gravityRangeCompound: 1.2,
+        numIter: 2500,
+        tile: false,
+        nodeSeparation: 90
+      }
+    });
+
+    // After initial layout, pin the hub near the center and re-run once so spokes settle around it.
+    cy.ready(() => {
+      const hub = cy.getElementById('sedm_studentIEP');
+      if (hub.nonempty()) {
+        const bb = cy.elements().boundingBox();
+        const cx = (bb.x1 + bb.x2) / 2;
+        const cy_ = (bb.y1 + bb.y2) / 2;
+        hub.position({ x: cx, y: cy_ });
+        cy.layout({
+          name: 'fcose',
+          quality: 'proof',
+          randomize: false,
+          animate: !REDUCED_MOTION,
+          animationDuration: REDUCED_MOTION ? 0 : 400,
+          padding: 60,
+          nodeRepulsion: 13000,
+          idealEdgeLength: edge => edge.data('kind') === 'membership' ? 130 : 210,
+          edgeElasticity: 0.45,
+          gravity: 0.25,
+          numIter: 1200,
+          nodeSeparation: 90,
+          fixedNodeConstraint: [{ nodeId: 'sedm_studentIEP', position: { x: cx, y: cy_ } }]
+        }).run();
+        cy.fit(null, 60);
+      }
+    });
+
+    // ===========================================================================
+    // Inspector renderer
+    // ===========================================================================
+    const inspector = document.getElementById('inspector');
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function icon(id, cls = 'icon icon-sm') {
+      return `<svg class="${cls}" aria-hidden="true"><use href="#${id}"/></svg>`;
+    }
+
+    function rolePill(role) {
+      const map = {
+        hub: { cls: 'hub', text: 'Hub (studentIEP)' },
+        resource: { cls: 'resource', text: 'SEDM resource' },
+        event: { cls: 'event', text: 'IDEA event' },
+        external: { cls: 'external', text: 'External Ed-Fi ref' }
+      };
+      const m = map[role] || map.resource;
+      return `<span class="pill ${m.cls}">${m.text}</span>`;
+    }
+
+    function fieldType(p) {
+      let t = p.type;
+      if (p.format) t += ` (${p.format})`;
+      return t;
+    }
+
+    function renderFieldRow(name, p, isInner = false) {
+      const flags = [];
+      if (p.identity) flags.push('<span class="flag identity">identity</span>');
+      if (p.required) flags.push('<span class="flag required">required</span>');
+      if (p.nullable) flags.push('<span class="flag nullable">nullable</span>');
+      const cls = p.identity ? 'identity' : '';
+      const max = p.maxLength ? `<div style="font-family:var(--font-mono);font-size:11px;color:var(--text-muted)">max ${p.maxLength}</div>` : '';
+      const desc = p.description ? escapeHtml(p.description) : '';
+      return `<tr class="${cls}">
+        <td class="prop-name">${escapeHtml(name)}</td>
+        <td class="prop-type">${escapeHtml(fieldType(p))}${max}</td>
+        <td>${flags.join(' ')}</td>
+        <td class="prop-desc">${desc}</td>
+      </tr>`;
+    }
+
+    function renderCollection(c, depth = 0) {
+      const fieldsRows = (c.fields || []).map(f => {
+        if (f.type === 'reference') {
+          const desc = f.description ? escapeHtml(f.description) : `Reference to ${escapeHtml(f.target)}`;
+          const flags = (f.required ? '<span class="flag required">required</span>' : '');
+          return `<tr>
+            <td class="prop-name">${escapeHtml(f.name)}</td>
+            <td class="prop-type">→ ${escapeHtml(f.target)}</td>
+            <td>${flags}</td>
+            <td class="prop-desc">${desc}</td>
+          </tr>`;
+        }
+        return renderFieldRow(f.name, f, true);
+      }).join('');
+
+      const nested = (c.children || []).map(cc => renderCollection(cc, depth + 1)).join('');
+
+      const descAttr = c.description ? `<span class="col-desc" title="${escapeHtml(c.description)}">${escapeHtml(c.description)}</span>` : '';
+
+      return `<details class="collection"${depth === 0 ? ' open' : ''}>
+        <summary>
+          ${icon('i-chev-down', 'icon icon-sm chevron')}
+          <span class="col-name">${escapeHtml(c.name)}</span>
+          ${descAttr}
+        </summary>
+        <div class="collection-body">
+          ${fieldsRows ? `<table class="props">
+            <thead><tr><th>Field</th><th>Type</th><th>Flags</th><th>Description</th></tr></thead>
+            <tbody>${fieldsRows}</tbody>
+          </table>` : ''}
+          ${nested}
+        </div>
+      </details>`;
+    }
+
+    function renderInspector(nodeId) {
+      const isExternal = !!SCHEMA.external[nodeId];
+      const r = isExternal ? SCHEMA.external[nodeId] : SCHEMA.resources[nodeId];
+      if (!r) { renderEmpty(); return; }
+
+      // ---------- header card ----------
+      const headerCard = `
+        <div class="card header-card span-full">
+          <h2 class="name">${escapeHtml(r.displayName)}</h2>
+          <div class="path">${escapeHtml(r.path || '')}</div>
+          <div class="pill-row">
+            ${rolePill(r.role)}
+            ${isExternal ? `<span class="pill external">${icon('i-link')} External</span>` : ''}
+          </div>
+          ${r.description ? `<div class="meta-row"><div class="meta-item" style="max-width:100%">${escapeHtml(r.description)}</div></div>` : ''}
+          ${isExternal ? `<div class="meta-row"><div class="meta-item">${icon('i-key')} <span>identity key</span> <span class="meta-val">${escapeHtml(r.identityKey || '')}</span></div></div>` : ''}
+        </div>`;
+
+      if (isExternal) {
+        inspector.innerHTML = `<div class="bento">${headerCard}</div>`;
+        inspector.scrollTo({ top: 0, behavior: REDUCED_MOTION ? 'auto' : 'smooth' });
+        return;
+      }
+
+      // ---------- identity card ----------
+      const identityCard = `
+        <div class="card">
+          <div class="card-head">
+            <h3 class="card-title">Identity keys</h3>
+            <span class="card-count">${r.identity.length}</span>
+          </div>
+          <div class="chip-row">
+            ${r.identity.map(k => `<span class="chip identity">${icon('i-key')} ${escapeHtml(k)}</span>`).join('')}
+          </div>
+        </div>`;
+
+      // ---------- required card ----------
+      const requiredCard = `
+        <div class="card">
+          <div class="card-head">
+            <h3 class="card-title">Required fields</h3>
+            <span class="card-count">${r.required.length}</span>
+          </div>
+          <div class="chip-row">
+            ${r.required.map(k => `<span class="chip required">${icon('i-asterisk')} ${escapeHtml(k)}</span>`).join('')}
+          </div>
+        </div>`;
+
+      // ---------- references card ----------
+      const refsCard = r.references.length ? `
+        <div class="card span-full">
+          <div class="card-head">
+            <h3 class="card-title">References</h3>
+            <span class="card-count">${r.references.length}</span>
+          </div>
+          <div class="chip-row">
+            ${r.references.map(ref => `<button class="chip ref" type="button" data-focus="${escapeHtml(ref.target)}" aria-label="Open ${escapeHtml(ref.target)}">
+              <span>${escapeHtml(ref.name)}</span>
+              ${icon('i-arrow-right', 'icon icon-sm arrow')}
+              <span class="ref-target">${escapeHtml(ref.target)}</span>
+              ${ref.kind === 'reference-optional' ? '<span class="flag nullable" style="margin-left:4px">optional</span>' : ''}
+            </button>`).join('')}
+          </div>
+        </div>` : '';
+
+      // ---------- properties card ----------
+      const propEntries = Object.entries(r.properties || {});
+      const propsCard = propEntries.length ? `
+        <div class="card span-full">
+          <div class="card-head">
+            <h3 class="card-title">Properties</h3>
+            <span class="card-count">${propEntries.length}</span>
+          </div>
+          <div style="max-height:380px;overflow:auto">
+            <table class="props">
+              <thead><tr><th>Name</th><th>Type</th><th>Flags</th><th>Description</th></tr></thead>
+              <tbody>${propEntries.map(([n, p]) => renderFieldRow(n, p)).join('')}</tbody>
+            </table>
+          </div>
+        </div>` : '';
+
+      // ---------- child collections card ----------
+      const childCard = (r.children && r.children.length) ? `
+        <div class="card span-full">
+          <div class="card-head">
+            <h3 class="card-title">Child collections</h3>
+            <span class="card-count">${r.children.length}</span>
+          </div>
+          ${r.children.map(c => renderCollection(c)).join('')}
+        </div>` : '';
+
+      inspector.innerHTML = `<div class="bento">
+        ${headerCard}
+        ${identityCard}
+        ${requiredCard}
+        ${refsCard}
+        ${propsCard}
+        ${childCard}
+      </div>`;
+      inspector.scrollTo({ top: 0, behavior: REDUCED_MOTION ? 'auto' : 'smooth' });
+
+      // Wire up reference chip clicks
+      inspector.querySelectorAll('button.chip.ref[data-focus]').forEach(btn => {
+        btn.addEventListener('click', () => focusNode(btn.dataset.focus));
+        btn.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            focusNode(btn.dataset.focus);
+          }
+        });
+      });
+    }
+
+    function renderEmpty() {
+      inspector.innerHTML = `<div class="card empty-state">
+        ${icon('i-click', 'icon icon-lg')}
+        <div class="heading">Click a node to inspect</div>
+        <div class="sub">The graph shows 7 SEDM resources (purple hub, blue resources, amber events) plus 3 external Ed-Fi references. Click any node, then follow reference chips to walk the model.</div>
+      </div>`;
+    }
+
+    // ===========================================================================
+    // Focus / selection helpers
+    // ===========================================================================
+    function focusNode(id) {
+      const node = cy.getElementById(id);
+      if (node.empty()) return;
+      cy.elements().unselect();
+      node.select();
+      applyFocusFade(node);
+      cy.animate({
+        center: { eles: node },
+        zoom: Math.max(0.9, cy.zoom())
+      }, {
+        duration: REDUCED_MOTION ? 0 : 280,
+        easing: 'ease-in-out-cubic'
+      });
+      renderInspector(id);
+    }
+
+    function applyFocusFade(node) {
+      const neighborhood = node.closedNeighborhood();
+      cy.elements().removeClass('hl').removeClass('faded');
+      cy.elements().difference(neighborhood).addClass('faded');
+      neighborhood.addClass('hl');
+    }
+
+    function clearFocus() {
+      cy.elements().removeClass('hl').removeClass('faded');
+      cy.elements().unselect();
+    }
+
+    // ===========================================================================
+    // Cy events
+    // ===========================================================================
+    cy.on('tap', 'node', evt => {
+      const node = evt.target;
+      applyFocusFade(node);
+      renderInspector(node.id());
+    });
+    cy.on('tap', evt => {
+      if (evt.target === cy) {
+        clearFocus();
+        renderEmpty();
+      }
+    });
+    cy.on('mouseover', 'node', evt => {
+      const neighborhood = evt.target.closedNeighborhood();
+      neighborhood.addClass('hl');
+    });
+    cy.on('mouseout', 'node', evt => {
+      // Only remove hl from nodes/edges that aren't part of the currently-selected neighborhood
+      const sel = cy.$('node:selected');
+      const keep = sel.nonempty() ? sel.closedNeighborhood() : cy.collection();
+      cy.elements().difference(keep).removeClass('hl');
+    });
+
+    // ===========================================================================
+    // Reset
+    // ===========================================================================
+    document.getElementById('resetView').addEventListener('click', () => {
+      clearFocus();
+      cy.animate({ fit: { padding: 50 } }, { duration: REDUCED_MOTION ? 0 : 280 });
+      renderEmpty();
+    });
+
+    // ===========================================================================
+    // Keyboard nav on graph
+    // ===========================================================================
+    const cyEl = document.getElementById('cy');
+    cyEl.addEventListener('keydown', e => {
+      const sortedNodes = cy.nodes().sort((a, b) => a.id().localeCompare(b.id()));
+      const arr = sortedNodes.toArray();
+      const selected = cy.$('node:selected');
+      let idx = selected.nonempty() ? arr.findIndex(n => n.id() === selected.id()) : -1;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        idx = (idx + 1 + arr.length) % arr.length;
+        focusNode(arr[idx].id());
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        idx = (idx - 1 + arr.length) % arr.length;
+        focusNode(arr[idx].id());
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (selected.nonempty()) renderInspector(selected.id());
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        clearFocus();
+        renderEmpty();
+        document.getElementById('resetView').focus();
+      }
+    });
+
+    // ===========================================================================
+    // Initial state
+    // ===========================================================================
+    renderEmpty();
+  </script>
+</body>
+</html>
